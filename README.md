@@ -1,2 +1,2 @@
 # ProgettoHPC
-HPC - High Performance Computing Project 2019
+HPC - High Performance Computing Project 2018-19
