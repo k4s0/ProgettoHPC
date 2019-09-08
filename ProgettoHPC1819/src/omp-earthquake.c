@@ -209,7 +209,7 @@ int main( int argc, char* argv[] )
     float Emean;
     int c;
     int m = n + 2 * HALO;
-    FILE *test_result = fopen("test_result", "a");
+    //FILE *test_result_omp = fopen("test_result", "a");
 
     srand(19); /* Inizializzazione del generatore pseudocasuale */
     
@@ -253,10 +253,11 @@ int main( int argc, char* argv[] )
     }
     const double elapsed = hpc_gettime() - tstart;
     
-    double Mupdates = (((double)n)*n/1.0e6)*nsteps; /* milioni di celle aggiornate per ogni secondo di wall clock time */
+    //double Mupdates = (((double)n)*n/1.0e6)*nsteps; /* milioni di celle aggiornate per ogni secondo di wall clock time */
     //fprintf(stderr, "%s : %.4f Mupdates in %.4f seconds (%f Mupd/sec)\n", argv[0], Mupdates, elapsed, Mupdates/elapsed);
-    fprintf(test_result, "%.4f\n", elapsed);
-    fclose(test_result);
+    fprintf(stderr, "%.4f\n",elapsed);
+    //fprintf(test_result_omp, "%.4f\n", elapsed);
+    //fclose(test_result_omp);
 
     /* Libera la memoria */
     free(cur);

@@ -14,7 +14,7 @@ echo > graph-image/serial
 
 for th in $(seq 1 12);
 do
-  echo Testing the OpenMP versione with ${th} threads... 
+  echo Testing the OpenMP version with ${th} threads... 
   OMP_NUM_THREADS=${th} ./omp-earthquake ${nsteps} ${n} >> graph-image/omp
 done
 
