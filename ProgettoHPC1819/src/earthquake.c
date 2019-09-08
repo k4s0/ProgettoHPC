@@ -182,8 +182,9 @@ int main( int argc, char* argv[] )
 {
     float *cur, *next;
     int s, n = 256, nsteps = 2048;
-    float Emean;
-    int c;
+    //float Emean;
+    //int c;
+    //FILE *serial_out = fopen("omp_out","a");
 
     srand(19); /* Inizializzazione del generatore pseudocasuale */
     
@@ -228,7 +229,9 @@ int main( int argc, char* argv[] )
     
     //double Mupdates = (((double)n)*n/1.0e6)*nsteps; /* milioni di celle aggiornate per ogni secondo di wall clock time */
     //fprintf(stderr, "%s : %.4f Mupdates in %.4f seconds (%f Mupd/sec)\n", argv[0], Mupdates, elapsed, Mupdates/elapsed);
-	fprintf(stderr, "%.4f\n",elapsed);
+    fprintf(stderr, "%.4f\n",elapsed);
+    //fprintf(serial_out,"%.4f\n",elapsed);  
+    //fclose(serial_out);
 
     /* Libera la memoria */
     free(cur);

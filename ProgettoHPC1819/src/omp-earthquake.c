@@ -209,7 +209,7 @@ int main( int argc, char* argv[] )
     //float Emean;
     //int c;
     int m = n + 2 * HALO;
-    FILE *omp_out = fopen("omp_out", "a");
+    //FILE *omp_out = fopen("omp_out", "a");
 
     srand(19); /* Inizializzazione del generatore pseudocasuale */
     
@@ -257,7 +257,7 @@ int main( int argc, char* argv[] )
     //fprintf(stderr, "%s : %.4f Mupdates in %.4f seconds (%f Mupd/sec)\n", argv[0], Mupdates, elapsed, Mupdates/elapsed);
     //fprintf(omp_out, "%.4f\n", elapsed);
     //fclose(omp_out);
-	fprintf(stderr, "%.4f\n",elapsed);
+    fprintf(stderr, "%.4f\n",elapsed);
 
     /* Libera la memoria */
     free(cur);
