@@ -206,8 +206,8 @@ int main( int argc, char* argv[] )
 {
     float *cur, *next;
     int s, n = 256, nsteps = 2048;
-    float Emean;
-    int c;
+    //float Emean;
+    //int c;
     int m = n + 2 * HALO;
     FILE *omp_out = fopen("omp_out", "a");
 
@@ -241,9 +241,9 @@ int main( int argc, char* argv[] )
     for (s=0; s<nsteps; s++) {
         /* L'ordine delle istruzioni che seguono e' importante */
         increment_energy(cur, n, EDELTA);
-        c = count_cells(cur, n);
+        count_cells(cur, n);
         propagate_energy(cur, next, n);
-        Emean = average_energy(next, n);
+        average_energy(next, n);
 
         //printf("%d %f\n", c, Emean);
 
