@@ -1,2 +1,3 @@
 # ProgettoHPC
-HPC - High Performance Computing Project 2018-19
+### @Author: Lorenzo Casini
+HPC - High Performance Computing Project 2018-2019
