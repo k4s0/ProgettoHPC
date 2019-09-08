@@ -218,7 +218,7 @@ int main( int argc, char* argv[] )
         propagate_energy(cur, next, n);
         Emean = average_energy(next, n);
 
-        printf("%d %f\n", c, Emean);
+        //printf("%d %f\n", c, Emean);
 
         float *tmp = cur;
         cur = next;
@@ -226,8 +226,9 @@ int main( int argc, char* argv[] )
     }
     const double elapsed = hpc_gettime() - tstart;
     
-    double Mupdates = (((double)n)*n/1.0e6)*nsteps; /* milioni di celle aggiornate per ogni secondo di wall clock time */
-    fprintf(stderr, "%s : %.4f Mupdates in %.4f seconds (%f Mupd/sec)\n", argv[0], Mupdates, elapsed, Mupdates/elapsed);
+    //double Mupdates = (((double)n)*n/1.0e6)*nsteps; /* milioni di celle aggiornate per ogni secondo di wall clock time */
+    //fprintf(stderr, "%s : %.4f Mupdates in %.4f seconds (%f Mupd/sec)\n", argv[0], Mupdates, elapsed, Mupdates/elapsed);
+	fprintf(stderr, "%.4f\n",elapsed);
 
     /* Libera la memoria */
     free(cur);
