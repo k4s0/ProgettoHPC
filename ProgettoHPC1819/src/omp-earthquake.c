@@ -205,16 +205,17 @@ float average_energy(float *grid, int n)
 int main( int argc, char* argv[] )
 {
     float *cur, *next;
-    int s, n = 256, nsteps = 2048;
+    int s, n = 256, nsteps = 2048,num_threads=0;
     //float Emean;
     //int c;
     int m = n + 2 * HALO;
-    //FILE *omp_out = fopen("omp_out", "a");
+    //int num_threads = omp_get_num_threads();
+    //FILE *omp_res = fopen("omp_out_"+argv[3], "a");
 
     srand(19); /* Inizializzazione del generatore pseudocasuale */
     
-    if ( argc > 3 ) {
-        fprintf(stderr, "Usage: %s [nsteps [n]]\n", argv[0]);
+    if ( argc > 4 ) {
+        fprintf(stderr, "Usage: %s [nsteps] [n] [num_threads_used]\n", argv[0]);
         return EXIT_FAILURE;
     }
 
@@ -226,7 +227,13 @@ int main( int argc, char* argv[] )
         n = atoi(argv[2]);
     }
 
-    
+    if(argc > 3){
+      num_threads = atoi(argv[3]);
+    }
+
+    FILE *omp_result = fopen("omp_out_"+num_threads,"a");    
+
+
     const size_t size = m*m*sizeof(float);
 
     /* Allochiamo i domini */
@@ -253,11 +260,12 @@ int main( int argc, char* argv[] )
     }
     const double elapsed = hpc_gettime() - tstart;
     
-    //double Mupdates = (((double)n)*n/1.0e6)*nsteps; /* milioni di celle aggiornate per ogni secondo di wall clock time */
-    //fprintf(stderr, "%s : %.4f Mupdates in %.4f seconds (%f Mupd/sec)\n", argv[0], Mupdates, elapsed, Mupdates/elapsed);
-    //fprintf(omp_out, "%.4f\n", elapsed);
-    //fclose(omp_out);
-    fprintf(stderr, "%.4f\n",elapsed);
+    double Mupdates = (((double)n)*n/1.0e6)*nsteps; /* milioni di celle aggiornate per ogni secondo di wall clock time */
+    fprintf(stderr, "%s : %.4f Mupdates in %.4f seconds (%f Mupd/sec)\n", argv[0], Mupdates, elapsed, Mupdates/elapsed);
+    fprintf(omp_result,"%.4f\n", elapsed);
+    fclose(omp_result);
+    //fprintf(stderr, "%.4f\n",elapsed);
+    
 
     /* Libera la memoria */
     free(cur);
