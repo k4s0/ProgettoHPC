@@ -205,7 +205,7 @@ float average_energy(float *grid, int n)
 int main( int argc, char* argv[] )
 {
     float *cur, *next;
-    int s, n = 256, nsteps = 2048,num_threads=0;
+    int s, n = 256, nsteps = 2048;
     //float Emean;
     //int c;
     int m = n + 2 * HALO;
@@ -227,13 +227,7 @@ int main( int argc, char* argv[] )
         n = atoi(argv[2]);
     }
 
-    if(argc > 3){
-      num_threads = atoi(argv[3]);
-    }
-
-    FILE *omp_result = fopen("omp_out_"+num_threads,"a");    
-
-
+  
     const size_t size = m*m*sizeof(float);
 
     /* Allochiamo i domini */
@@ -262,9 +256,14 @@ int main( int argc, char* argv[] )
     
     double Mupdates = (((double)n)*n/1.0e6)*nsteps; /* milioni di celle aggiornate per ogni secondo di wall clock time */
     fprintf(stderr, "%s : %.4f Mupdates in %.4f seconds (%f Mupd/sec)\n", argv[0], Mupdates, elapsed, Mupdates/elapsed);
-    fprintf(omp_result,"%.4f\n", elapsed);
-    fclose(omp_result);
+    //fprintf(omp_result,"%.4f\n", elapsed);
+    //fclose(omp_result);
     //fprintf(stderr, "%.4f\n",elapsed);
+	if ( argc > 3 ) {
+        FILE *omp_result = fopen(argv[3], "a");
+        fprintf(omp_result, "%.4f\n", elapsed);
+        fclose(omp_result);
+    }
     
 
     /* Libera la memoria */
