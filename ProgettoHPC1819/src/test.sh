@@ -12,7 +12,7 @@ n=256
 clear
 
 echo Testing the serial version...
-./earthquake ${nsteps} ${n} > serial_out
+./earthquake ${nsteps} ${n}
 mv serial_out graph-image/
 
 for th in $(seq 1 12);
