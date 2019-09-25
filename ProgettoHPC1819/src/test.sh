@@ -1,7 +1,8 @@
 #!/bin/bash
 
-rm graph-image/*_out
-rm *_out
+rm graph-image/*out*
+rm serial_out
+rm omp_final
 
 touch serial_out
 touch omp_out
