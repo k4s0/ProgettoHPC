@@ -48,34 +48,32 @@
  *
  ****************************************************************************/
 #include "hpc.h"
-
 #include <stdio.h>
-
 #include <stdlib.h>     /* rand() */
-
 #include <assert.h>
 
 /* energia massima */
-#
-define EMAX 4.0 f
+#define EMAX 4.0f
 /* energia da aggiungere ad ogni timestep */
-# define EDELTA 1e-4
+#define EDELTA 1e-4
 
-# define HALO 1 /*ghost area*/
+#define HALO 1 /*ghost area*/ 
 /**
  * Restituisce un puntatore all'elemento di coordinate (i,j) del
  * dominio grid con n colonne.
  */
-static inline float * IDX(float * grid, int i, int j, int n) {
-  return (grid + (i + HALO) * n + j + HALO);
+static inline float *IDX(float *grid, int i, int j, int n)
+{
+    return (grid + (i + HALO) * n + j + HALO);
 }
 
 /**
  * Restituisce un numero reale pseudocasuale con probabilita' uniforme
  * nell'intervallo [a, b], con a < b.
  */
-float randab(float a, float b) {
-  return a + (b - a) * (rand() / (float) RAND_MAX);
+float randab( float a, float b )
+{
+    return a + (b-a)*(rand() / (float)RAND_MAX);
 }
 
 /**
@@ -89,12 +87,13 @@ float randab(float a, float b) {
  * posso spiegarli a chi e' interessato). Di conseguenza, questa
  * funzione va eseguita dalla CPU, e solo dal master (se si usa MPI).
  */
-void setup(float * grid, int n, float fmin, float fmax) {
-  for (int i = 0; i < n; i++) {
-    for (int j = 0; j < n; j++) {
-      * IDX(grid, i, j, n) = randab(fmin, fmax);
+void setup( float* grid, int n, float fmin, float fmax )
+{
+    for ( int i=0; i<n; i++ ) {
+        for ( int j=0; j<n; j++ ) {
+            *IDX(grid, i, j, n) = randab(fmin, fmax);
+        }
     }
-  }
 }
 
 /**
@@ -108,14 +107,15 @@ void setup(float * grid, int n, float fmin, float fmax) {
  * i due cicli con aggiunta di clausola default(none) e specificando
  * lo scope delle variabili shared e private di default quelle dei due cicli. 
  */
-
-void increment_energy(float * grid, int n, float delta) {
-  #pragma omp parallel for collapse(2) default (none) shared(grid, n, delta)
-  for (int i = 0; i < n; i++) {
-    for (int j = 0; j < n; j++) {
-      * IDX(grid, i, j, n) += delta;
+ 
+void increment_energy( float *grid, int n, float delta )
+{
+#pragma omp parallel for collapse(2) default(none) shared(grid,n,delta)
+    for (int i=0; i<n; i++) {
+        for (int j=0; j<n; j++) {
+            *IDX(grid, i, j, n) += delta;
+        }
     }
-  }
 }
 
 /**
@@ -125,17 +125,16 @@ void increment_energy(float * grid, int n, float delta) {
  * Modifica apportata:
  * parallelizzazione con collasso (2) e aggiunta di riduzione
  */
-int count_cells(float * grid, int n) {
-  int c = 0;
-  #pragma omp parallel for collapse(2) default (none) shared(grid, n) reduction(+: c)
-  for (int i = 0; i < n; i++) {
-    for (int j = 0; j < n; j++) {
-      if ( * IDX(grid, i, j, n) > EMAX) {
-        c++;
-      }
+int count_cells( float *grid, int n )
+{
+    int c = 0;
+#pragma omp parallel for collapse(2) default(none) shared(grid,n) reduction(+:c)
+    for (int i=0; i<n; i++) {
+        for (int j=0; j<n; j++) {
+            if ( *IDX(grid, i, j, n) > EMAX ) { c++; }
+        }
     }
-  }
-  return c;
+    return c;
 }
 
 /** 
@@ -150,45 +149,38 @@ int count_cells(float * grid, int n) {
  * che ha comportato la creazione di una ghost area attorno alla matrice iniziale, questo ha evitato di fare ulteriori
  * controlli.
  */
-void propagate_energy(float * cur, float * next, int n) {
-  const float FDELTA = EMAX / 4;
-  #pragma omp parallelfor collapse(2) default (none) shared(cur, next, n)
-  for (int i = 0; i < n; i++) {
-    for (int j = 0; j < n; j++) {
-      float F = * IDX(cur, i, j, n);
-      float * out = IDX(next, i, j, n);
+void propagate_energy( float *cur, float *next, int n )
+{
+    const float FDELTA = EMAX/4;
+#pragma omp parallel for collapse(2) default(none) shared(cur,next,n)
+    for (int i=0; i<n; i++) {
+        for (int j=0; j<n; j++) {
+            float F = *IDX(cur, i, j, n);
+            float *out = IDX(next, i, j, n);
 
-      /* Se l'energia del vicino di sinistra (se esiste) e'
-         maggiore di EMAX, allora la cella (i,j) ricevera'
-         energia addizionale FDELTA = EMAX/4 */
-      if ( * IDX(cur, i, j - 1, n) > EMAX) {
-        F += FDELTA;
-      }
-      /* Idem per il vicino di destra */
-      if ( * IDX(cur, i, j + 1, n) > EMAX) {
-        F += FDELTA;
-      }
-      /* Idem per il vicino in alto */
-      if ( * IDX(cur, i - 1, j, n) > EMAX) {
-        F += FDELTA;
-      }
-      /* Idem per il vicino in basso */
-      if ( * IDX(cur, i + 1, j, n) > EMAX) {
-        F += FDELTA;
-      }
+            /* Se l'energia del vicino di sinistra (se esiste) e'
+               maggiore di EMAX, allora la cella (i,j) ricevera'
+               energia addizionale FDELTA = EMAX/4 */
+            if (*IDX(cur, i, j-1, n) > EMAX) { F += FDELTA; }
+            /* Idem per il vicino di destra */
+            if (*IDX(cur, i, j+1, n) > EMAX) { F += FDELTA; }
+            /* Idem per il vicino in alto */
+            if (*IDX(cur, i-1, j, n) > EMAX) { F += FDELTA; }
+            /* Idem per il vicino in basso */
+            if (*IDX(cur, i+1, j, n) > EMAX) { F += FDELTA; }
 
-      if (F > EMAX) {
-        F -= EMAX;
-      }
+            if (F > EMAX) {
+                F -= EMAX;
+            }
 
-      /* Si noti che il valore di F potrebbe essere ancora
-         maggiore di EMAX; questo non e' un problema:
-         l'eventuale eccesso verra' rilasciato al termine delle
-         successive iterazioni vino a riportare il valore
-         dell'energia sotto la foglia EMAX. */
-      * out = F;
+            /* Si noti che il valore di F potrebbe essere ancora
+               maggiore di EMAX; questo non e' un problema:
+               l'eventuale eccesso verra' rilasciato al termine delle
+               successive iterazioni vino a riportare il valore
+               dell'energia sotto la foglia EMAX. */
+            *out = F;
+        }
     }
-  }
 }
 
 /**
@@ -198,78 +190,74 @@ void propagate_energy(float * cur, float * next, int n) {
  * Modificha apportata:
  * parallelizzazione con collasso (2) e aggiunta della clausola reduction 
  */
-float average_energy(float * grid, int n) {
-  float sum = 0.0 f;
-  #pragma omp parallel for collapse(2) default (none) shared(grid, n) reduction(+: sum)
-  for (int i = 0; i < n; i++) {
-    for (int j = 0; j < n; j++) {
-      sum += * IDX(grid, i, j, n);
+float average_energy(float *grid, int n)
+{
+    float sum = 0.0f;
+#pragma omp parallel for collapse(2) default(none) shared(grid,n) reduction(+:sum)
+    for (int i=0; i<n; i++) {
+        for (int j=0; j<n; j++) {
+            sum += *IDX(grid, i, j, n);
+        }
     }
-  }
-  return (sum / (n * n));
+    return (sum / (n*n));
 }
 
-int main(int argc, char * argv[]) {
-  float * cur, * next;
-  int s, n = 256, nsteps = 2048;
-  int m = n + 2 * HALO;
-  //int num_threads = omp_get_num_threads();
-  //FILE *omp_res = fopen("omp_out_"+argv[3], "a");
+int main( int argc, char* argv[] )
+{
+    float *cur, *next;
+    int s, n = 256, nsteps = 2048;
+    float Emean;
+    int c;
+    int m = n + 2 * HALO;
 
-  srand(19); /* Inizializzazione del generatore pseudocasuale */
+    srand(19); /* Inizializzazione del generatore pseudocasuale */
+    
+    if ( argc > 3 ) {
+        fprintf(stderr, "Usage: %s [nsteps [n]]\n", argv[0]);
+        return EXIT_FAILURE;
+    }
 
-  if (argc > 4) {
-    fprintf(stderr, "Usage: %s [nsteps] [n] [num_threads_used]\n", argv[0]);
-    return EXIT_FAILURE;
-  }
+    if ( argc > 1 ) {
+        nsteps = atoi(argv[1]);
+    }
 
-  if (argc > 1) {
-    nsteps = atoi(argv[1]);
-  }
+    if ( argc > 2 ) {
+        n = atoi(argv[2]);
+    }
 
-  if (argc > 2) {
-    n = atoi(argv[2]);
-  }
+    
+    const size_t size = m*m*sizeof(float);
 
-  const size_t size = m * m * sizeof(float);
+    /* Allochiamo i domini */
+    cur = (float*)malloc(size); assert(cur);
+    next = (float*)malloc(size); assert(next);
 
-  /* Allochiamo i domini */
-  cur = (float * ) malloc(size);
-  assert(cur);
-  next = (float * ) malloc(size);
-  assert(next);
+    /* L'energia iniziale di ciascuna cella e' scelta 
+       con probabilita' uniforme nell'intervallo [0, EMAX*0.1] */       
+    setup(cur, n, 0, EMAX*0.1);
+    
+    const double tstart = hpc_gettime();
+    for (s=0; s<nsteps; s++) {
+        /* L'ordine delle istruzioni che seguono e' importante */
+        increment_energy(cur, n, EDELTA);
+        c = count_cells(cur, n);
+        propagate_energy(cur, next, n);
+        Emean = average_energy(next, n);
 
-  /* L'energia iniziale di ciascuna cella e' scelta 
-     con probabilita' uniforme nell'intervallo [0, EMAX*0.1] */
-  setup(cur, n, 0, EMAX * 0.1);
+        printf("%d %f\n", c, Emean);
 
-  const double tstart = hpc_gettime();
-  for (s = 0; s < nsteps; s++) {
-    /* L'ordine delle istruzioni che seguono e' importante */
-    increment_energy(cur, n, EDELTA);
-    count_cells(cur, n);
-    propagate_energy(cur, next, n);
-    average_energy(next, n);
-    float * tmp = cur;
-    cur = next;
-    next = tmp;
-  }
-  const double elapsed = hpc_gettime() - tstart;
+        float *tmp = cur;
+        cur = next;
+        next = tmp;
+    }
+    const double elapsed = hpc_gettime() - tstart;
+    
+    double Mupdates = (((double)n)*n/1.0e6)*nsteps; /* milioni di celle aggiornate per ogni secondo di wall clock time */
+    fprintf(stderr, "%s : %.4f Mupdates in %.4f seconds (%f Mupd/sec)\n", argv[0], Mupdates, elapsed, Mupdates/elapsed);
 
-  double Mupdates = (((double) n) * n / 1.0e6) * nsteps; /* milioni di celle aggiornate per ogni secondo di wall clock time */
-  fprintf(stderr, "%s : %.4f Mupdates in %.4f seconds (%f Mupd/sec)\n", argv[0], Mupdates, elapsed, Mupdates / elapsed);
-  //fprintf(omp_result,"%.4f\n", elapsed);
-  //fclose(omp_result);
-  //fprintf(stderr, "%.4f\n",elapsed);
-  if (argc > 3) {
-    FILE * omp_result = fopen(argv[3], "a");
-    fprintf(omp_result, "%.4f\n", elapsed);
-    fclose(omp_result);
-  }
-
-  /* Libera la memoria */
-  free(cur);
-  free(next);
-
-  return EXIT_SUCCESS;
+    /* Libera la memoria */
+    free(cur);
+    free(next);
+    
+    return EXIT_SUCCESS;
 }
