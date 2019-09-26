@@ -54,4 +54,4 @@ plot: $(EXE_SERIAL)
 	gnuplot plot.gp
 
 clean:
-	\rm -f $(EXE) *.o *~ *.png out
+	\rm -f $(EXE) *.o *~ *.png out omp_* mpi_*
