@@ -47,7 +47,9 @@
  * spiegato nella specifica del progetto.
  *
  ****************************************************************************/
+ /*Lorenzo Casini 27/09/2019*/
 #include "hpc.h"
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>     /* rand() */
 #include <assert.h>
@@ -56,6 +58,7 @@
 #define EMAX 4.0f
 /* energia da aggiungere ad ogni timestep */
 #define EDELTA 1e-4
+#define HALO 1
 
 /**
  * Restituisce un puntatore all'elemento di coordinate (i,j) del
@@ -63,7 +66,7 @@
  */
 static inline float *IDX(float *grid, int i, int j, int n)
 {
-    return (grid + i*n + j);
+    return (grid + (i + HALO) * n + j + HALO);
 }
 
 /**
@@ -97,12 +100,12 @@ void setup( float* grid, int n, float fmin, float fmax )
 
 /**
  * Somma delta a tutte le celle del dominio grid di dimensioni
- * n*n. Questa funzione realizza il passo 1 descritto nella specifica
+ * n*m. Questa funzione realizza il passo 1 descritto nella specifica
  * del progetto.
  */
-void increment_energy( float *grid, int n, float delta )
+void increment_energy( float *grid, int n, int m, float delta )
 {
-    for (int i=0; i<n; i++) {
+    for (int i=0; i<m; i++) {
         for (int j=0; j<n; j++) {
             *IDX(grid, i, j, n) += delta;
         }
@@ -113,10 +116,10 @@ void increment_energy( float *grid, int n, float delta )
  * Restituisce il numero di celle la cui energia e' strettamente
  * maggiore di EMAX.
  */
-int count_cells( float *grid, int n )
+int count_cells( float *grid, int n, int m)
 {
     int c = 0;
-    for (int i=0; i<n; i++) {
+    for (int i=0; i<m; i++) {
         for (int j=0; j<n; j++) {
             if ( *IDX(grid, i, j, n) > EMAX ) { c++; }
         }
@@ -130,10 +133,10 @@ int count_cells( float *grid, int n )
  * che conterra' il nuovo valore delle energie. Questa funzione
  * realizza il passo 2 descritto nella specifica del progetto.
  */
-void propagate_energy( float *cur, float *next, int n )
+void propagate_energy( float *cur, float *next, int n, int m)
 {
     const float FDELTA = EMAX/4;
-    for (int i=0; i<n; i++) {
+    for (int i=0; i<m; i++) {
         for (int j=0; j<n; j++) {
             float F = *IDX(cur, i, j, n);
             float *out = IDX(next, i, j, n);
@@ -164,31 +167,36 @@ void propagate_energy( float *cur, float *next, int n )
 }
 
 /**
- * Restituisce l'energia media delle celle del dominio grid di
- * dimensioni n*n. Il dominio non viene modificato.
+ * Restituisce la somma dell'energia delle celle del dominio grid di
+ * dimensioni n*m. Il dominio non viene modificato.
  */
-float average_energy(float *grid, int n)
+float sum_energy(float *grid, int n, int m)
 {
     float sum = 0.0f;
-    for (int i=0; i<n; i++) {
+    for (int i=0; i<m; i++) {
         for (int j=0; j<n; j++) {
             sum += *IDX(grid, i, j, n);
         }
     }
-    return (sum / (n*n));
+    return sum;
 }
 
 int main( int argc, char* argv[] )
-{
-    float *cur, *next;
-    int s, n = 256, nsteps = 2048;
-    float Emean;
-    int c;
+{   	
+    float *cur, *next,Emean;
+    int s,counter, n = 256, nsteps = 2048;
+    int rank, comm_size;
+    int m = n + 2 * HALO;
+	
+    MPI_Init( &argc, &argv );
+    MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+    MPI_Comm_size( MPI_COMM_WORLD, &comm_size );
+    MPI_Status status;
 
     srand(19); /* Inizializzazione del generatore pseudocasuale */
     
-    if ( argc > 3 ) {
-        fprintf(stderr, "Usage: %s [nsteps [n]]\n", argv[0]);
+    if ( argc > 4 ) {
+        fprintf(stderr, "Usage: %s [nsteps] [n] [num_threads_used]\n", argv[0]);
         return EXIT_FAILURE;
     }
 
@@ -200,38 +208,137 @@ int main( int argc, char* argv[] )
         n = atoi(argv[2]);
     }
 
-    const size_t size = n*n*sizeof(float);
+    
+    const size_t size = m*m*sizeof(float);
+
+    MPI_Datatype rowtype;
+    MPI_Type_vector(1, n, m, MPI_FLOAT, &rowtype);
+    MPI_Type_commit(&rowtype);
+
+    int *sendcnts = (int *)malloc(comm_size * sizeof(int)); 
+	assert(sendcnts);
+	sendcnts[0] = n / comm_size;
+	
+	int *displ = (int *)malloc(comm_size * sizeof(int)); 
+	assert(displ);    
+    displ[0] = 0;
+    
+
+    for (int i = 1; i < comm_size; i++) {
+        displ[i] = displ[i - 1] + sendcnts[i - 1];
+        sendcnts[i] = (i+1) * n / comm_size - i * n / comm_size;
+    }
 
     /* Allochiamo i domini */
-    cur = (float*)malloc(size); assert(cur);
-    next = (float*)malloc(size); assert(next);
+    cur = (float*)malloc(size); 
+	assert(cur);
+    next = (float*)malloc(size); 
+	assert(next);
 
-    /* L'energia iniziale di ciascuna cella e' scelta 
-       con probabilita' uniforme nell'intervallo [0, EMAX*0.1] */       
-    setup(cur, n, 0, EMAX*0.1);
-    
+    /* L'energia iniziale di ciascuna cella e' scelta
+       con probabilita' uniforme nell'intervallo [0, EMAX*0.1] */
+    if (rank == 0) {
+        setup(cur, n, 0, EMAX*0.1);
+    }
+
     const double tstart = hpc_gettime();
+	
+    MPI_Scatterv(
+		IDX(cur, 0, 0, n), 
+		sendcnts, 
+		displ, 
+		rowtype, 
+		IDX(cur, 0, 0, n), 
+		m, 
+		rowtype, 
+		0, 
+		MPI_COMM_WORLD);
+		
     for (s=0; s<nsteps; s++) {
         /* L'ordine delle istruzioni che seguono e' importante */
-        increment_energy(cur, n, EDELTA);
-        c = count_cells(cur, n);
-        propagate_energy(cur, next, n);
-        Emean = average_energy(next, n);
+        increment_energy(cur, n, sendcnts[rank], EDELTA);
+        counter = 0;
+        int local_c = count_cells(cur, n, sendcnts[rank]);
+        MPI_Reduce(
+			&local_c, 
+			&counter,
+			1, 
+			MPI_INT, 
+			MPI_SUM, 
+			0, 
+			MPI_COMM_WORLD);
 
-        printf("%d %f\n", c, Emean);
+    int upDest = rank - 1;
+	int downDest = rank + 1;
+	
+	if (upDest < 0) {
+	    upDest = MPI_PROC_NULL;
+	}
+	if (downDest == comm_size) {
+	    downDest = MPI_PROC_NULL;
+	}
+        int sender = rank - 1;
+        MPI_Sendrecv(
+            IDX(cur, sendcnts[sender] - HALO, 0, n),
+            HALO,
+            rowtype,
+            downDest,
+            0,
+            &cur[HALO],
+            HALO,
+            rowtype,
+            upDest,
+            0,
+            MPI_COMM_WORLD,
+            &status
+        );
+        MPI_Sendrecv(
+            IDX(cur, 0, 0, n),
+            HALO,
+            rowtype,
+            upDest,
+            0,
+            IDX(cur, sendcnts[sender], 0, n),
+            HALO,
+            rowtype,
+            downDest,
+            0,
+            MPI_COMM_WORLD,
+            &status
+        );
+        propagate_energy(cur, next, n, sendcnts[rank]);
+        float sum_e = sum_energy(next, n, sendcnts[rank]);
+        MPI_Reduce(
+			&sum_e, 
+			&Emean,
+			1, 
+			MPI_FLOAT, 
+			MPI_SUM, 
+			0, 
+			MPI_COMM_WORLD);
 
+        if (rank == 0) {
+            Emean = (Emean / (n*n));
+        }
         float *tmp = cur;
         cur = next;
         next = tmp;
     }
     const double elapsed = hpc_gettime() - tstart;
-    
-    double Mupdates = (((double)n)*n/1.0e6)*nsteps; /* milioni di celle aggiornate per ogni secondo di wall clock time */
-    fprintf(stderr, "%s : %.4f Mupdates in %.4f seconds (%f Mupd/sec)\n", argv[0], Mupdates, elapsed, Mupdates/elapsed);
+   
+    if(argc > 3){
+	if(rank==0){
+		double Mupdates = (((double)n)*n/1.0e6)*nsteps; /* milioni di celle aggiornate per ogni secondo di wall clock time */
+    		fprintf(stderr, "%s : %.4f Mupdates in %.4f seconds (%f Mupd/sec)\n", argv[0], Mupdates, elapsed, Mupdates/elapsed);
+		FILE *mpi_out = fopen(argv[3],"a");
+		fprintf(mpi_out,"%.4f\n",elapsed);
+		fclose(mpi_out);
+	}
+    }
 
     /* Libera la memoria */
     free(cur);
     free(next);
-    
+    MPI_Finalize();
     return EXIT_SUCCESS;
 }
