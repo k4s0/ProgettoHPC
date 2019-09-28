@@ -11,3 +11,10 @@ fornito, oppure si puo' decidere di non usarlo ed effettuare la
 compilazione in modo manuale. In tal caso specificare in questo file i
 comandi da usare per la compilazione dei programmi.
 
+Per compilare i sorgenti basta lanciare il comando
+
+make
+
+Per eseguire tutte e 3 le versioni basta lanciare lo script
+
+./all-test.sh

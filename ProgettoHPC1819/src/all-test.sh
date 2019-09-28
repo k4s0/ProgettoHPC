@@ -26,6 +26,7 @@ do
   cat mpi_out_${th} >> mpi_final
   mv mpi_out_${th} graph-image/
 done
+echo
 
 rm graph-image/*out*
 
